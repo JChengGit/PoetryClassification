@@ -1,0 +1,3 @@
+python run_classifier.py --do_train=true --do_eval=true --data_dir=G:/wp/Bert_News_Classification/cnews --vocab_file=G:/wp/Bert_News_Classification/chinese_L-12_H-768_A-12/vocab.txt --bert_config_file=G:/wp/Bert_News_Classification/chinese_L-12_H-768_A-12/bert_config.json --init_checkpoint=G:/wp/Bert_News_Classification/chinese_L-12_H-768_A-12/bert_model.ckpt --max_seq_length=64 --train_batch_size=16 --learning_rate=2e-5 --num_train_epochs=3.0 --output_dir=../output/ --task_name=task
+
+pause
