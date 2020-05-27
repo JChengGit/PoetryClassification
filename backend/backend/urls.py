@@ -24,4 +24,5 @@ urlpatterns = [
     url(r'api/test/$', classifierviews.test.as_view()),
     url(r'api/classify/$', classifierviews.classify.as_view()),
     url(r'api/retrieve/$', classifierviews.retrievelist.as_view()),
+    url(r'api/test/$', classifierviews.test.as_view()),
 ]

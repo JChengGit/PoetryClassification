@@ -6,6 +6,7 @@ import requests,re,pymysql
 import numpy as np
 from sklearn.svm import SVC
 from sklearn.externals import joblib
+from langconv import *
 
 CONN = pymysql.connect(host='127.0.0.1', port=3306, user='root', passwd='1234', db='topic')
 cur = CONN.cursor()
@@ -13,15 +14,13 @@ cur = CONN.cursor()
 model = word2vec.Word2Vec.load('G:\\PoetryAnalysis\\project\\backend\\classifier\\Zi_vec.bin')
 SVM = joblib.load("G:\\PoetryAnalysis\\project\\backend\\classifier\\SVM_Classifier.m")
 
-class test(mixins.CreateModelMixin,
-           mixins.ListModelMixin,
-           mixins.RetrieveModelMixin,
-           generics.GenericAPIView):
+def T2S(sentence):
+    sentence = Converter('zh-hans').convert(sentence)
+    return sentence
 
-    def get(self, request, *args, **kwargs):
-        data = request.GET['data']
-        return Response({'data':data})
-
+def S2T(sentence):
+    sentence = Converter('zh-hant').convert(sentence)
+    return sentence
 
 class classify(generics.GenericAPIView):
     
@@ -46,6 +45,7 @@ class classify(generics.GenericAPIView):
     angry = words.split(' ')
 
     topic_dic = {
+        'history':  "咏史怀古",
         'war':      "战争边塞",
         'scene':    "山水景致",
         'farewell': "离别送别",
@@ -114,37 +114,69 @@ class classify(generics.GenericAPIView):
         if re:
             topic,emotion = re[0]
         else:
-            topic = self.topic_dic[SVM.predict([self.wv2dv(poet),])[0]]
+            topic = SVM.predict([self.wv2dv(poet),])[0]
             emotion = self.EmotionAnalysis(poet)
         return topic,emotion
 
     def rec(self,feature, topic, emotion):
         sql = "SELECT title,dynasty,author,content FROM TEMP WHERE topic='%s' AND emotion='%s' \
             AND content NOT LIKE '%%%s%%' ORDER BY rand() LIMIT 5;"%(topic,emotion,feature)
+        #sql = "SELECT title,dynasty,author,content FROM TEMP WHERE topic='%s' AND emotion='%s' \
+        #    ORDER BY rand() LIMIT 5;"%(topic,emotion)
         cur.execute(sql)
         text = cur.fetchall()
-        return text
+        result = []
+        for p in text:
+            pt = {
+                'title':S2T(p[0]),
+                'author':S2T(p[1])+'·'+S2T(p[2]),
+                'content':S2T(p[3])
+            }
+            result.append(pt)
+        return result
 
     def post(self, request, *args, **kwargs):
-        poet = request.data['poet']
+        poet = T2S(request.data['poet'])
         result = self.poet_analysis(poet)
-        recommend = self.rec(poet[:5],result[0],result[1])
-        return Response({'analysis':result,'recommend':recommend})
+        topic,emotion = result
+        recommend = self.rec(poet[:5],topic,emotion)
+        return Response({'analysis':[self.topic_dic[topic],emotion],'recommend':recommend})
 
 
 class retrievelist(generics.GenericAPIView):
+    
+    emotion_dic = {
+        'sad':      "悲伤",
+        'happy':    "喜悦",
+        'sorrow':   "忧愁",
+        'heroic':   "豪迈",
+        'angry':    "愤怒",
+    }
 
     def get(self, request, *args, **kwargs):
         topic = request.GET['topic']
-        emotion = request.GET['emotion']
+        emotion = self.emotion_dic[request.GET['emotion']]
         page = request.GET['page']
         f = (int(page)-1)*5+1
         sql = "SELECT title,dynasty,author,content FROM TEMP WHERE topic='%s' AND emotion='%s' LIMIT %d,%d;"%(topic,emotion,f,8)
         cur.execute(sql)
         text = cur.fetchall()
+        result = []
+        for p in text:
+            pt = {
+                'title':S2T(p[0]),
+                'author':S2T(p[1])+'·'+S2T(p[2]),
+                'content':S2T(p[3])
+            }
+            result.append(pt)
         
-        return Response(text)
+        return Response(result)
 
+
+class test(generics.GenericAPIView):
+
+    def get(self, request, *args, **kwargs):
+        return Response('大漠孤烟直，长河落日圆。')
 
 
            
